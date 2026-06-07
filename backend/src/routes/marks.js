@@ -150,7 +150,11 @@ router.get('/', async (req, res) => {
   }
 
   const entries = await MarkEntry.find(filter)
-    .populate('studentId', 'name rollNo semester')
+    .populate('studentId', 'name rollNo semester departmentId')
+    .populate({
+      path: 'studentId',
+      populate: { path: 'departmentId', select: 'name code' }
+    })
     .populate('subjectId', 'name code maxInternal maxExternal');
 
   res.json(entries);
@@ -159,7 +163,11 @@ router.get('/', async (req, res) => {
 // GET /marks/:id
 router.get('/:id', async (req, res) => {
   const entry = await MarkEntry.findById(req.params.id)
-    .populate('studentId', 'name rollNo semester')
+    .populate('studentId', 'name rollNo semester departmentId')
+    .populate({
+      path: 'studentId',
+      populate: { path: 'departmentId', select: 'name code' }
+    })
     .populate('subjectId', 'name code maxInternal maxExternal');
   if (!entry) return res.status(404).json({ message: 'Mark entry not found' });
 
