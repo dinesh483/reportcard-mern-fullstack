@@ -1,0 +1,16 @@
+{
+  "name": "reportcard-mern-portal",
+  "version": "1.0.0",
+  "description": "Student Report Card Portal - Full MERN Stack",
+  "scripts": {
+    "install:all": "npm install --prefix backend && npm install --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm start --prefix frontend",
+    "seed": "npm run seed --prefix backend",
+    "build": "npm run build --prefix frontend",
+    "start": "npm start --prefix backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.0"
+  }
+}
