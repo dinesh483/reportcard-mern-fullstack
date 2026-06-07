@@ -8,6 +8,7 @@ export const getMe = () => api.get('/auth/me');
 // Dashboard
 export const getDashboard = () => api.get('/dashboard');
 export const getMetrics = () => api.get('/metrics');
+export const seedMetrics = () => api.post('/metrics/seed');
 
 // Students
 export const getStudents = (params) => api.get('/students', { params });

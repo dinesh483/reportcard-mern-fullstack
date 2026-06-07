@@ -15,21 +15,21 @@ function ConflictModal({ open, conflict, onAcceptLatest, onOverwrite, onManualMe
     <Modal open={open} onClose={onClose} title="Concurrency Conflict Detected">
       <div className="modal-body">
         <div className="conflict-box">
-          <h4><AlertTriangle size={16} style={{ display:'inline', marginRight:6, verticalAlign:'middle' }} />Record Updated by Another User</h4>
-          <p style={{ fontSize:'0.85rem', color:'var(--text-muted)', marginBottom:12 }}>
+          <h4><AlertTriangle size={16} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />Record Updated by Another User</h4>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 12 }}>
             While you were editing, someone else updated this record. Choose how to proceed:
           </p>
           <div className="conflict-compare">
             <div className="conflict-col yours">
               <div className="label">Your Version (v{conflict.yourVersion})</div>
-              <div style={{ fontSize:'0.85rem' }}>
+              <div style={{ fontSize: '0.85rem' }}>
                 <div>Internal: <strong>{conflict.yourData?.internalMarks}</strong></div>
                 <div>External: <strong>{conflict.yourData?.externalMarks}</strong></div>
               </div>
             </div>
             <div className="conflict-col theirs">
               <div className="label">Current (v{conflict.currentVersion})</div>
-              <div style={{ fontSize:'0.85rem' }}>
+              <div style={{ fontSize: '0.85rem' }}>
                 <div>Internal: <strong>{conflict.currentData?.internalMarks}</strong></div>
                 <div>External: <strong>{conflict.currentData?.externalMarks}</strong></div>
                 <div>Total: <strong>{conflict.currentData?.total}</strong></div>
@@ -43,8 +43,8 @@ function ConflictModal({ open, conflict, onAcceptLatest, onOverwrite, onManualMe
             <button className="btn btn-ghost btn-sm" onClick={onManualMerge}>Edit & Merge</button>
           </div>
         </div>
-        <div className="alert alert-info" style={{ marginBottom:0 }}>
-          <Info size={14} style={{ display:'inline', marginRight:6, verticalAlign:'middle' }} />
+        <div className="alert alert-info" style={{ marginBottom: 0 }}>
+          <Info size={14} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
           <strong>Accept Latest</strong>: Discard your changes. <strong>Overwrite</strong>: Force your version. <strong>Edit & Merge</strong>: Manually reconcile.
         </div>
       </div>
@@ -193,13 +193,13 @@ export default function Marks() {
       </div>
 
       {hasDraft && !modal.open && (
-        <div className="alert alert-warning" style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+        <div className="alert alert-warning" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>📝 You have an unsaved draft. It will be restored when you open the form.</span>
           <button className="btn btn-ghost btn-xs" onClick={clearDraft}>Clear Draft</button>
         </div>
       )}
 
-      <div className="card" style={{ padding:0 }}>
+      <div className="card" style={{ padding: 0 }}>
         {loading ? <div className="loading"><div className="spinner" /></div> :
           marks.length === 0 ? (
             <div className="empty-state"><FileText /><h3>No mark entries</h3></div>
@@ -208,24 +208,28 @@ export default function Marks() {
               <table>
                 <thead>
                   <tr>
-                    <th>Student</th><th>Roll No</th><th>Subject</th><th>Internal</th><th>External</th><th>Total</th><th>Grade</th><th>Ver</th>
+                    <th>Student ID</th><th>Name</th><th>Roll No</th><th>Department</th><th>Semester</th><th>Subject ID</th><th>Subject</th><th>Internal</th><th>External</th><th>Total</th><th>Grade</th><th>Ver</th>
                     {(isAdmin || isFaculty) && <th>Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {marks.map((m) => (
                     <tr key={m._id}>
-                      <td style={{ fontWeight:500 }}>{m.studentId?.name}</td>
-                      <td><span className="mono" style={{ fontSize:'0.8rem', color:'var(--text-muted)' }}>{m.studentId?.rollNo}</span></td>
-                      <td>{m.subjectId?.name} <span style={{ color:'var(--text-muted)', fontSize:'0.78rem' }}>({m.subjectId?.code})</span></td>
+                      <td><span className="mono" style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>{m.studentId?._id?.substring(0, 8)}</span></td>
+                      <td style={{ fontWeight: 500 }}>{m.studentId?.name}</td>
+                      <td><span className="mono" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{m.studentId?.rollNo}</span></td>
+                      <td>{m.studentId?.departmentId?.name || '—'} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({m.studentId?.departmentId?.code})</span></td>
+                      <td>Sem {m.studentId?.semester}</td>
+                      <td><span className="mono" style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>{m.subjectId?._id?.substring(0, 8)}</span></td>
+                      <td>{m.subjectId?.name} <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>({m.subjectId?.code})</span></td>
                       <td>{m.internalMarks}/{m.subjectId?.maxInternal}</td>
                       <td>{m.externalMarks}/{m.subjectId?.maxExternal}</td>
-                      <td style={{ fontWeight:600 }}>{m.total}</td>
+                      <td style={{ fontWeight: 600 }}>{m.total}</td>
                       <td><span className={`badge ${GRADE_CLASS[m.grade] || ''}`}>{m.grade}</span></td>
-                      <td><span className="mono" style={{ fontSize:'0.78rem', color:'var(--text-dim)' }}>v{m.version}</span></td>
+                      <td><span className="mono" style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>v{m.version}</span></td>
                       {(isAdmin || isFaculty) && (
                         <td>
-                          <div style={{ display:'flex', gap:6 }}>
+                          <div style={{ display: 'flex', gap: 6 }}>
                             <button className="btn btn-outline btn-xs" onClick={() => openEdit(m)}><Pencil size={13} /></button>
                             {isAdmin && <button className="btn btn-danger btn-xs" onClick={() => remove(m._id)}><Trash2 size={13} /></button>}
                           </div>
@@ -249,7 +253,7 @@ export default function Marks() {
                   <label className="form-label">Student</label>
                   <select className="form-control" required value={form.studentId} onChange={(e) => handleFormChange('studentId', e.target.value)}>
                     <option value="">Select student…</option>
-                    {students.map((s) => <option key={s._id} value={s._id}>{s.name} ({s.rollNo})</option>)}
+                    {students.map((s) => <option key={s._id} value={s._id}>{s.name} | {s.rollNo} | Sem {s.semester}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
@@ -262,11 +266,13 @@ export default function Marks() {
               </>
             )}
             {modal.editing && (
-              <div className="alert alert-info" style={{ marginBottom:16 }}>
-                <strong>{modal.editing.studentId?.name}</strong> — {modal.editing.subjectId?.name} (v{form.version})
+              <div className="alert alert-info" style={{ marginBottom: 16 }}>
+                <div><strong>Student:</strong> {modal.editing.studentId?.name} | ID: <span className="mono">{modal.editing.studentId?._id}</span> | Roll No: <span className="mono">{modal.editing.studentId?.rollNo}</span> | Dept: {modal.editing.studentId?.departmentId?.name} | Sem: {modal.editing.studentId?.semester}</div>
+                <div><strong>Subject:</strong> {modal.editing.subjectId?.name} | ID: <span className="mono">{modal.editing.subjectId?._id}</span> | Code: <span className="mono">{modal.editing.subjectId?.code}</span></div>
+                <div><strong>Mark ID:</strong> <span className="mono">{modal.editing._id}</span> | Version: {form.version}</div>
               </div>
             )}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div className="form-group">
                 <label className="form-label">Internal Marks</label>
                 <input className="form-control" type="number" required min={0} value={form.internalMarks} onChange={(e) => handleFormChange('internalMarks', e.target.value)} />
@@ -276,8 +282,8 @@ export default function Marks() {
                 <input className="form-control" type="number" required min={0} value={form.externalMarks} onChange={(e) => handleFormChange('externalMarks', e.target.value)} />
               </div>
             </div>
-            <div className="alert alert-info" style={{ marginBottom:0 }}>
-              <Info size={14} style={{ display:'inline', marginRight:6, verticalAlign:'middle' }} />
+            <div className="alert alert-info" style={{ marginBottom: 0 }}>
+              <Info size={14} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
               Grade is calculated server-side. Concurrency conflicts will be detected automatically.
             </div>
           </div>
