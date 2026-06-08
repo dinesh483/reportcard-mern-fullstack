@@ -1,166 +1,423 @@
-# 🎓 Student Report Card Portal — Full MERN Stack
+# 🎓 Student Report Card Portal
 
-A full-stack student academic management system with role-based access control, optimistic concurrency, bulk CSV import, and real-time KPI dashboard.
-
----
-
-## 📁 Project Structure
-
-```
-reportcard-mern-portal/
-├── backend/          # Express + MongoDB API
-│   ├── src/
-│   │   ├── routes/   # auth, students, subjects, marks, reportCards, bulkImport, dashboard
-│   │   ├── models/   # User, Student, Subject, MarkEntry, ReportCard, Department, FacultySubject
-│   │   ├── middleware/
-│   │   ├── services/ # gradeCalculator, audit, metrics
-│   │   └── server.js
-│   └── package.json
-└── frontend/         # React SPA
-    ├── src/
-    │   ├── api/      # axios client + service functions
-    │   ├── contexts/ # AuthContext
-    │   ├── hooks/    # useDraft (local draft recovery)
-    │   ├── pages/    # Dashboard, Students, Subjects, Marks, ReportCards, BulkImport, etc.
-    │   └── components/ # Layout, Sidebar, Modal
-    └── package.json
-```
+A full-stack MERN (MongoDB, Express.js, React.js, Node.js) application for managing student academic records with role-based access control, report card publishing, bulk CSV import, optimistic concurrency control, audit logging, and dashboard analytics.
 
 ---
 
-## 🚀 Quick Start
+## 📌 Project Overview
 
-### Prerequisites
-- Node.js 18+
-- MongoDB running locally (or a MongoDB Atlas connection string)
+The Student Report Card Portal is designed to simplify academic record management for educational institutions.
 
-### 1. Install dependencies
+The system supports:
 
-```bash
-# Backend
-cd backend && npm install
+- Admin, Faculty, and Student roles
+- Student and Subject Management
+- Marks Entry and Report Card Generation
+- Faculty Subject Assignment
+- Bulk CSV Import
+- Dashboard Analytics
+- Audit Logging
+- Optimistic Concurrency Control
+- Local Draft Recovery
 
-# Frontend
-cd ../frontend && npm install
+---
+
+## 🏗 Architecture
+
+System architecture diagram:
+
+```text
+architecture-diagram.png
 ```
 
-### 2. Configure backend environment
+The architecture illustrates:
 
-Create `backend/.env`:
-```env
-PORT=5000
-MONGO_URI=mongodb://localhost:27017/reportcard
-JWT_SECRET=your_super_secret_key_here
-CLIENT_ORIGIN=http://localhost:3000
-```
+- React Frontend
+- Express Backend API
+- MongoDB Database
+- Authentication Layer
+- Metrics & Audit Services
 
-### 3. Seed the database (optional)
+---
 
-```bash
-cd backend && npm run seed
-```
+## 📂 Repository Structure
 
-### 4. Start backend
-
-```bash
-cd backend && npm run dev
-# Runs on http://localhost:5000
-```
-
-### 5. Start frontend
-
-```bash
-cd frontend && npm start
-# Opens http://localhost:3000
+```text
+reportcard-mern-fullstack/
+│
+├── backend/
+├── frontend/
+├── test-artifacts/
+│   ├── concurrency-test.md
+│   ├── unauthorized-faculty-test.md
+│   ├── concurrency-test.png
+│   └── unauthorized-faculty-test.png
+│
+├── architecture-diagram.png
+├── sample_marks.csv
+├── ai-audit-log.md
+├── prompt-receipts.md
+├── debrief.md
+├── package.json
+├── README.md
+└── .gitignore
 ```
 
 ---
 
-## 👥 Roles & Credentials (after seeding)
+## ✨ Features
 
-| Role    | Email                    | Password    |
-|---------|--------------------------|-------------|
-| Admin   | admin@college.edu        | password123 |
-| Faculty | faculty@college.edu      | password123 |
-| Student | student@college.edu      | password123 |
+### Authentication & Authorization
 
----
+- JWT Authentication
+- Role-Based Access Control (RBAC)
+- Admin Role
+- Faculty Role
+- Student Role
+- Protected Routes
 
-## ✅ Features Implemented
+### Student Management
 
-### Authentication & RBAC
-- JWT-based authentication
-- Three roles: Admin, Faculty, Student
-- Route-level and API-level protection
-- **Tripwire**: Faculty attempts to edit unassigned subjects → 403 with meaningful UI error
+- Create Students
+- Update Students
+- Delete Students
+- Search Students
+- Filter Students
 
-### Report Card Management
-- Full CRUD for Students, Subjects, Departments, Mark Entries
-- Grade calculated server-side (never trusted from client)
-- Publish/unpublish report cards (Admin only)
-- Students see only their own published cards
+### Subject Management
 
-### Optimistic Concurrency (version-based)
-- Every MarkEntry has a `version` field
-- On update, client sends the version it saw
-- If version mismatch → 409 Conflict returned
-- **UI shows 3 options**: Accept Latest, Overwrite Mine, Manual Merge
+- Create Subjects
+- Update Subjects
+- Delete Subjects
+- Faculty Assignment
 
-### Dashboard KPIs (server-computed)
+### Marks Management
+
+- Marks Entry
+- Marks Editing
+- Server-side Grade Calculation
+- Validation Rules
+
+### Report Cards
+
+- Generate Report Cards
+- Publish Report Cards
+- Unpublish Report Cards
+- Student Self-Service Viewing
+
+### Dashboard Analytics
+
 - Total Students
 - Average Score
 - Pass Percentage
 - Fail Count
-- Interactive bar chart
-
-### Search & Filtering
-- Search by student name or roll number (regex, case-insensitive)
-- Filter by department, semester, pass/fail status
 
 ### Bulk CSV Import
-- Minimum 50 rows supported
-- Validates roll number exists, marks are valid, required columns present
-- Row-by-row feedback: created / updated / skipped / failed
-- **Idempotent**: uploading same file twice doesn't duplicate
+
+- CSV Upload
+- Validation Checks
+- Duplicate Protection
+- Import Summary
 
 ### Local Draft Recovery
-- Mark entry form saves to `localStorage` on every change
-- Draft auto-restored on page refresh
-- Clear draft button available
-- Limitation: drafts are per-browser and cleared on logout
+
+- Auto-save draft changes
+- Restore unsaved work
+- Local browser persistence
 
 ### Observability
-- Structured audit logs for create/update/delete
-- `/metrics` endpoint with operation counts and latency stats
-- Metrics UI page for admin
+
+- Audit Logs
+- Metrics Endpoint
+- Admin Metrics Dashboard
+
+### Optimistic Concurrency Control
+
+When multiple users edit the same record:
+
+- Conflict Detection
+- Accept Latest
+- Overwrite Mine
+- Edit & Merge
 
 ---
 
-## 🛠 API Endpoints
+## 🔐 Security Features
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | /auth/register | Public | Register user |
-| POST | /auth/login | Public | Login |
-| GET | /auth/me | Auth | Current user |
-| GET | /dashboard | Admin/Faculty | KPI stats |
-| GET | /metrics | Admin | Latency metrics |
-| GET/POST/PUT/DELETE | /students | Auth | Student CRUD |
-| GET/POST/PUT/DELETE | /subjects | Auth | Subject CRUD |
-| POST | /subjects/assignments/assign | Admin | Assign faculty to subject |
-| GET/POST/PUT/DELETE | /marks | Auth | Mark entry CRUD |
-| POST | /report-cards/:id/publish | Admin | Publish report card |
-| POST | /report-cards/:id/unpublish | Admin | Unpublish |
-| GET | /report-cards/student/:id | Auth | List report cards |
-| GET | /report-cards/:id/:sem/full | Auth | Full detailed card |
-| POST | /import/csv | Admin/Faculty | Bulk CSV import |
+- Password Hashing (bcrypt)
+- JWT Authentication
+- Role Validation
+- Faculty Assignment Validation
+- Server-side Grade Calculation
+- Protected API Endpoints
 
 ---
 
-## 🔒 Security
+## 🚀 Installation
 
-- Passwords hashed with bcryptjs
-- JWT tokens (24h expiry)
-- Server-side grade calculation
-- Role enforcement on every endpoint
-- Faculty tripwire enforced in both single-entry and bulk import
+### Prerequisites
+
+- Node.js 18+
+- MongoDB
+
+---
+
+### Clone Repository
+
+```bash
+git clone <repository-url>
+cd reportcard-mern-fullstack
+```
+
+---
+
+### Install Dependencies
+
+```bash
+npm run install:all
+```
+
+or
+
+```bash
+cd backend
+npm install
+
+cd ../frontend
+npm install
+```
+
+---
+
+## ⚙ Environment Variables
+
+Create:
+
+```text
+backend/.env
+```
+
+Example:
+
+```env
+PORT=5000
+MONGO_URI=mongodb://localhost:27017/reportcard_db
+JWT_SECRET=your_secret_key
+JWT_EXPIRES_IN=1h
+NODE_ENV=development
+```
+
+---
+
+## 🌱 Seed Database
+
+```bash
+npm run seed
+```
+
+---
+
+## ▶ Run Backend
+
+```bash
+npm run dev:backend
+```
+
+Backend runs at:
+
+```text
+http://localhost:5000
+```
+
+---
+
+## ▶ Run Frontend
+
+```bash
+npm run dev:frontend
+```
+
+Frontend runs at:
+
+```text
+http://localhost:3000
+```
+
+---
+
+## 👥 Demo Accounts
+
+After database seeding:
+
+| Role | Email |
+|--------|--------|
+| Admin | admin@college.edu |
+| Faculty | faculty@college.edu |
+| Student | student@college.edu |
+
+Use the passwords configured in the seed script.
+
+---
+
+## 📊 API Modules
+
+### Authentication
+
+```text
+/auth
+```
+
+### Students
+
+```text
+/students
+```
+
+### Subjects
+
+```text
+/subjects
+```
+
+### Marks
+
+```text
+/marks
+```
+
+### Report Cards
+
+```text
+/report-cards
+```
+
+### Dashboard
+
+```text
+/dashboard
+```
+
+### Metrics
+
+```text
+/metrics
+```
+
+### CSV Import
+
+```text
+/import/csv
+```
+
+---
+
+## 🧪 Testing Evidence
+
+### Unauthorized Faculty Edit
+
+Documentation:
+
+```text
+test-artifacts/unauthorized-faculty-test.md
+```
+
+Evidence Screenshot:
+
+```text
+test-artifacts/unauthorized-faculty-test.png
+```
+
+---
+
+### Concurrency Conflict Handling
+
+Documentation:
+
+```text
+test-artifacts/concurrency-test.md
+```
+
+Evidence Screenshot:
+
+```text
+test-artifacts/concurrency-test.png
+```
+
+---
+
+## 📄 Supporting Documents
+
+### AI Audit Log
+
+```text
+ai-audit-log.md
+```
+
+### Prompt Receipts
+
+```text
+prompt-receipts.md
+```
+
+### Development Debrief
+
+```text
+debrief.md
+```
+
+### Sample Import File
+
+```text
+sample_marks.csv
+```
+
+---
+
+## 🛠 Technologies Used
+
+### Frontend
+
+- React.js
+- Axios
+- React Router
+
+### Backend
+
+- Node.js
+- Express.js
+- JWT
+- bcryptjs
+
+### Database
+
+- MongoDB
+- Mongoose
+
+### Development Tools
+
+- Nodemon
+- Git
+- VS Code
+
+---
+
+## 🎯 Assignment Requirements Covered
+
+- Full MERN Stack Implementation
+- Authentication & RBAC
+- Student Management
+- Faculty Assignment
+- Report Card Management
+- Dashboard Analytics
+- Bulk CSV Import
+- Optimistic Concurrency Control
+- Audit Logging
+- Metrics Collection
+- AI Usage Documentation
+- Testing Artifacts
+
+---
+
+## 👨‍💻 Author
+
+Developed as part of an academic software engineering assignment.
