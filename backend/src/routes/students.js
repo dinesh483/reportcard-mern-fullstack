@@ -120,6 +120,7 @@ router.put('/:id', requireRole('admin'), async (req, res) => {
 router.delete('/:id', requireRole('admin'), async (req, res) => {
   const student = await Student.findByIdAndDelete(req.params.id);
   if (!student) return res.status(404).json({ message: 'Student not found' });
+  await MarkEntry.deleteMany({ studentId: student._id });
   res.status(204).send();
 });
 

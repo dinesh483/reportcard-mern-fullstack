@@ -5,6 +5,9 @@ const Department = require('./models/Department');
 const Student = require('./models/Student');
 const Subject = require('./models/Subject');
 const FacultySubject = require('./models/FacultySubject');
+const MarkEntry = require('./models/MarkEntry');
+const ReportCard = require('./models/ReportCard');
+const AuditLog = require('./models/AuditLog');
 
 async function seed() {
   await connectDB();
@@ -17,6 +20,9 @@ async function seed() {
     Student.deleteMany({}),
     Subject.deleteMany({}),
     FacultySubject.deleteMany({}),
+    MarkEntry.deleteMany({}),
+    ReportCard.deleteMany({}),
+    AuditLog.deleteMany({}),
   ]);
 
   // Users

@@ -1,16 +1,34 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { getMarks, createMark, updateMark, deleteMark, getStudents, getSubjects, getMySubjects, getMark } from '../api/services';
+import React, { useCallback, useEffect, useState } from 'react';
+import { getMarks, createMark, updateMark, deleteMark, getStudents, getSubjects, getMySubjects } from '../api/services';
 import { useAuth } from '../contexts/AuthContext';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 import { useDraft } from '../hooks/useDraft';
 import { Plus, Pencil, Trash2, FileText, AlertTriangle, Info } from 'lucide-react';
 
-const GRADE_CLASS = { A: 'badge-a', B: 'badge-b', C: 'badge-c', D: 'badge-d', F: 'badge-f' };
+const GRADE_CLASS = { O: 'badge-a', 'A+': 'badge-a', A: 'badge-a', 'B+': 'badge-b', B: 'badge-b', C: 'badge-c', F: 'badge-f' };
 const EMPTY = { studentId: '', subjectId: '', internalMarks: '', externalMarks: '' };
+
+const getId = (value) => value?._id || value || '';
+const shortId = (value) => {
+  const id = getId(value);
+  return typeof id === 'string' && id ? id.substring(0, 8) : '-';
+};
+const display = (value, fallback = '-') => value ?? fallback;
+const resolveEntityName = (entity) => {
+  if (!entity) return '-';
+  if (typeof entity === 'string') return shortId(entity);
+  return entity.name || shortId(entity._id) || '-';
+};
+const resolveSubjectCode = (subject) => {
+  if (!subject) return '-';
+  if (typeof subject === 'string') return shortId(subject);
+  return subject.code || shortId(subject._id) || '-';
+};
 
 function ConflictModal({ open, conflict, onAcceptLatest, onOverwrite, onManualMerge, onClose }) {
   if (!conflict) return null;
+
   return (
     <Modal open={open} onClose={onClose} title="Concurrency Conflict Detected">
       <div className="modal-body">
@@ -55,9 +73,11 @@ function ConflictModal({ open, conflict, onAcceptLatest, onOverwrite, onManualMe
 export default function Marks() {
   const { isAdmin, isFaculty } = useAuth();
   const [marks, setMarks] = useState([]);
+  const [orphanedMarks, setOrphanedMarks] = useState(0);
   const [students, setStudents] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [modal, setModal] = useState({ open: false, editing: null });
   const [saving, setSaving] = useState(false);
   const [conflict, setConflict] = useState(null);
@@ -68,36 +88,66 @@ export default function Marks() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError('');
     try {
-      const [mRes, sRes, subRes] = await Promise.all([
+      const [marksResult, studentsResult, subjectsResult] = await Promise.allSettled([
         getMarks(),
         getStudents(),
         isFaculty ? getMySubjects() : getSubjects()
       ]);
-      setMarks(mRes.data);
-      setStudents(sRes.data);
-      setSubjects(subRes.data);
-    } catch { toast.error('Failed to load marks'); }
-    finally { setLoading(false); }
+      const errors = [];
+
+      if (marksResult.status === 'fulfilled') {
+        const markEntries = Array.isArray(marksResult.value.data) ? marksResult.value.data : [];
+        const validMarks = markEntries.filter((entry) => entry.studentId && entry.subjectId);
+        const hiddenOrphans = markEntries.length - validMarks.length;
+        setMarks(validMarks);
+        setOrphanedMarks(hiddenOrphans);
+      } else {
+        setMarks([]);
+        setOrphanedMarks(0);
+        errors.push('marks');
+      }
+
+      if (studentsResult.status === 'fulfilled') {
+        setStudents(Array.isArray(studentsResult.value.data) ? studentsResult.value.data : []);
+      } else {
+        setStudents([]);
+        errors.push('students');
+      }
+
+      if (subjectsResult.status === 'fulfilled') {
+        setSubjects(Array.isArray(subjectsResult.value.data) ? subjectsResult.value.data : []);
+      } else {
+        setSubjects([]);
+        errors.push(isFaculty ? 'assigned subjects' : 'subjects');
+      }
+
+      if (errors.length > 0) {
+        const message = `Failed to load ${errors.join(', ')}.`;
+        setLoadError(message);
+        toast.error(message);
+      }
+    } finally {
+      setLoading(false);
+    }
   }, [isFaculty]);
 
   useEffect(() => { load(); }, [load]);
 
   const openCreate = () => {
-    const initialForm = hasDraft ? draft : EMPTY;
-    setForm(initialForm);
+    setForm(hasDraft ? draft : EMPTY);
     setModal({ open: true, editing: null });
   };
 
   const openEdit = (m) => {
-    const f = hasDraft ? draft : {
-      studentId: m.studentId?._id || m.studentId,
-      subjectId: m.subjectId?._id || m.subjectId,
+    setForm({
+      studentId: getId(m.studentId),
+      subjectId: getId(m.subjectId),
       internalMarks: m.internalMarks,
       externalMarks: m.externalMarks,
       version: m.version
-    };
-    setForm(f);
+    });
     setModal({ open: true, editing: m });
   };
 
@@ -108,7 +158,7 @@ export default function Marks() {
   const handleFormChange = (field, value) => {
     const next = { ...form, [field]: value };
     setForm(next);
-    setDraft(next);
+    if (!modal.editing) setDraft(next);
   };
 
   const save = async (e) => {
@@ -116,30 +166,41 @@ export default function Marks() {
     setSaving(true);
     try {
       if (modal.editing) {
-        await updateMark(modal.editing._id, { internalMarks: Number(form.internalMarks), externalMarks: Number(form.externalMarks), version: form.version });
+        await updateMark(modal.editing._id, {
+          internalMarks: Number(form.internalMarks),
+          externalMarks: Number(form.externalMarks),
+          version: form.version
+        });
         toast.success('Marks updated');
-        clearDraft();
-        closeModal();
-        load();
       } else {
-        await createMark({ studentId: form.studentId, subjectId: form.subjectId, internalMarks: Number(form.internalMarks), externalMarks: Number(form.externalMarks) });
+        await createMark({
+          studentId: form.studentId,
+          subjectId: form.subjectId,
+          internalMarks: Number(form.internalMarks),
+          externalMarks: Number(form.externalMarks)
+        });
         toast.success('Marks saved');
         clearDraft();
-        closeModal();
-        load();
       }
+      closeModal();
+      load();
     } catch (err) {
       if (err.response?.status === 409) {
         const data = err.response.data;
-        setConflictCtx({ id: modal.editing._id, yourData: { internalMarks: form.internalMarks, externalMarks: form.externalMarks } });
+        setConflictCtx({
+          id: modal.editing._id,
+          yourData: { internalMarks: form.internalMarks, externalMarks: form.externalMarks }
+        });
         setConflict(data);
         setModal((prev) => ({ ...prev, open: false }));
       } else if (err.response?.status === 403) {
-        toast.error('⚠️ Access denied: You are not assigned to this subject');
+        toast.error('Access denied: You are not assigned to this subject');
       } else {
         toast.error(err.response?.data?.message || 'Save failed');
       }
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleAcceptLatest = () => {
@@ -163,17 +224,20 @@ export default function Marks() {
       setConflict(null);
       setConflictCtx(null);
       load();
-    } catch { toast.error('Overwrite failed'); }
-    finally { setSaving(false); }
+    } catch {
+      toast.error('Overwrite failed');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleManualMerge = () => {
-    setForm({
-      ...form,
+    setForm((current) => ({
+      ...current,
       internalMarks: conflictCtx.yourData.internalMarks,
       externalMarks: conflictCtx.yourData.externalMarks,
       version: conflict.currentVersion
-    });
+    }));
     setConflict(null);
     setConflictCtx(null);
     setModal((m) => ({ ...m, open: true }));
@@ -181,8 +245,13 @@ export default function Marks() {
 
   const remove = async (id) => {
     if (!window.confirm('Delete this mark entry?')) return;
-    try { await deleteMark(id); toast.success('Deleted'); load(); }
-    catch (err) { toast.error(err.response?.data?.message || 'Delete failed'); }
+    try {
+      await deleteMark(id);
+      toast.success('Deleted');
+      load();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Delete failed');
+    }
   };
 
   return (
@@ -196,9 +265,21 @@ export default function Marks() {
       </div>
 
       {hasDraft && !modal.open && (
-        <div className="alert alert-warning" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span>📝 You have an unsaved draft. It will be restored when you open the form.</span>
+        <div className="alert alert-warning" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <span>You have an unsaved draft. It will be restored when you open the form.</span>
           <button className="btn btn-ghost btn-xs" onClick={clearDraft}>Clear Draft</button>
+        </div>
+      )}
+
+      {!!loadError && (
+        <div className="alert alert-warning">
+          <strong>Some data could not be loaded.</strong> {loadError}
+        </div>
+      )}
+
+      {orphanedMarks > 0 && (
+        <div className="alert alert-warning">
+          <strong>{orphanedMarks} stale mark entr{orphanedMarks === 1 ? 'y was' : 'ies were'}</strong> hidden because their student or subject record no longer exists. Reseed or clean the old mark data to fully normalize this page.
         </div>
       )}
 
@@ -218,23 +299,23 @@ export default function Marks() {
                 <tbody>
                   {marks.map((m) => (
                     <tr key={m._id}>
-                      <td><span className="mono" style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>{m.studentId?._id?.substring(0, 8)}</span></td>
-                      <td style={{ fontWeight: 500 }}>{m.studentId?.name}</td>
-                      <td><span className="mono" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{m.studentId?.rollNo}</span></td>
-                      <td>{m.studentId?.departmentId?.name || '—'} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({m.studentId?.departmentId?.code})</span></td>
-                      <td>Sem {m.studentId?.semester}</td>
-                      <td><span className="mono" style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>{m.subjectId?._id?.substring(0, 8)}</span></td>
-                      <td>{m.subjectId?.name} <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>({m.subjectId?.code})</span></td>
-                      <td>{m.internalMarks}/{m.subjectId?.maxInternal}</td>
-                      <td>{m.externalMarks}/{m.subjectId?.maxExternal}</td>
-                      <td style={{ fontWeight: 600 }}>{m.total}</td>
-                      <td><span className={`badge ${GRADE_CLASS[m.grade] || ''}`}>{m.grade}</span></td>
-                      <td><span className="mono" style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>v{m.version}</span></td>
+                      <td><span className="mono" style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>{shortId(m.studentId)}</span></td>
+                      <td style={{ fontWeight: 500 }}>{resolveEntityName(m.studentId)}</td>
+                      <td><span className="mono" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{display(m.studentId?.rollNo)}</span></td>
+                      <td>{display(m.studentId?.departmentId?.name)} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({display(m.studentId?.departmentId?.code)})</span></td>
+                      <td>{m.studentId?.semester ? `Sem ${m.studentId.semester}` : '-'}</td>
+                      <td><span className="mono" style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>{shortId(m.subjectId)}</span></td>
+                      <td>{resolveEntityName(m.subjectId)} <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>({resolveSubjectCode(m.subjectId)})</span></td>
+                      <td>{display(m.internalMarks)}/{display(m.subjectId?.maxInternal)}</td>
+                      <td>{display(m.externalMarks)}/{display(m.subjectId?.maxExternal)}</td>
+                      <td style={{ fontWeight: 600 }}>{display(m.total)}</td>
+                      <td><span className={`badge ${GRADE_CLASS[m.grade] || ''}`}>{display(m.grade)}</span></td>
+                      <td><span className="mono" style={{ fontSize: '0.78rem', color: 'var(--text-dim)' }}>v{display(m.version)}</span></td>
                       {(isAdmin || isFaculty) && (
                         <td>
                           <div style={{ display: 'flex', gap: 6 }}>
-                            <button className="btn btn-outline btn-xs" onClick={() => openEdit(m)}><Pencil size={13} /></button>
-                            {isAdmin && <button className="btn btn-danger btn-xs" onClick={() => remove(m._id)}><Trash2 size={13} /></button>}
+                            <button className="btn btn-outline btn-xs" type="button" onClick={() => openEdit(m)}><Pencil size={13} /></button>
+                            {isAdmin && <button className="btn btn-danger btn-xs" type="button" onClick={() => remove(m._id)}><Trash2 size={13} /></button>}
                           </div>
                         </td>
                       )}
@@ -255,14 +336,14 @@ export default function Marks() {
                 <div className="form-group">
                   <label className="form-label">Student</label>
                   <select className="form-control" required value={form.studentId} onChange={(e) => handleFormChange('studentId', e.target.value)}>
-                    <option value="">Select student…</option>
+                    <option value="">Select student...</option>
                     {students.map((s) => <option key={s._id} value={s._id}>{s.name} | {s.rollNo} | Sem {s.semester}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Subject</label>
                   <select className="form-control" required value={form.subjectId} onChange={(e) => handleFormChange('subjectId', e.target.value)}>
-                    <option value="">Select subject…</option>
+                    <option value="">Select subject...</option>
                     {subjects.map((s) => <option key={s._id} value={s._id}>{s.name} ({s.code})</option>)}
                   </select>
                 </div>
@@ -270,19 +351,19 @@ export default function Marks() {
             )}
             {modal.editing && (
               <div className="alert alert-info" style={{ marginBottom: 16 }}>
-                <div><strong>Student:</strong> {modal.editing.studentId?.name} | Roll No: <span className="mono">{modal.editing.studentId?.rollNo}</span></div>
-                <div><strong>Subject:</strong> {modal.editing.subjectId?.name} | Code: <span className="mono">{modal.editing.subjectId?.code}</span></div>
+                <div><strong>Student:</strong> {display(modal.editing.studentId?.name)} | Roll No: <span className="mono">{display(modal.editing.studentId?.rollNo)}</span></div>
+                <div><strong>Subject:</strong> {display(modal.editing.subjectId?.name)} | Code: <span className="mono">{display(modal.editing.subjectId?.code)}</span></div>
                 <div><strong>Version:</strong> {form.version}</div>
               </div>
             )}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="marks-form-grid">
               <div className="form-group">
                 <label className="form-label">Internal Marks</label>
-                <input className="form-control" type="number" required min={0} value={form.internalMarks} onChange={(e) => handleFormChange('internalMarks', e.target.value)} />
+                <input className="form-control" type="number" required min={0} max={modal.editing?.subjectId?.maxInternal} value={form.internalMarks} onChange={(e) => handleFormChange('internalMarks', e.target.value)} />
               </div>
               <div className="form-group">
                 <label className="form-label">External Marks</label>
-                <input className="form-control" type="number" required min={0} value={form.externalMarks} onChange={(e) => handleFormChange('externalMarks', e.target.value)} />
+                <input className="form-control" type="number" required min={0} max={modal.editing?.subjectId?.maxExternal} value={form.externalMarks} onChange={(e) => handleFormChange('externalMarks', e.target.value)} />
               </div>
             </div>
             <div className="alert alert-info" style={{ marginBottom: 0 }}>
@@ -292,7 +373,7 @@ export default function Marks() {
           </div>
           <div className="modal-footer">
             <button type="button" className="btn btn-outline" onClick={closeModal}>Cancel</button>
-            <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save Marks'}</button>
+            <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save Marks'}</button>
           </div>
         </form>
       </Modal>

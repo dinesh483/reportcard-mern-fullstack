@@ -6,10 +6,18 @@ import toast from 'react-hot-toast';
 import { FileText, Eye, CheckCircle, XCircle, GraduationCap } from 'lucide-react';
 
 const GRADE_CLASS = { A: 'badge-a', B: 'badge-b', C: 'badge-c', D: 'badge-d', F: 'badge-f' };
+const display = (value, fallback = '-') => value ?? fallback;
+const shortId = (value) => {
+  if (!value) return '-';
+  if (typeof value === 'string') return value.substring(0, 8);
+  return value?._id ? String(value._id).substring(0, 8) : '-';
+};
 
 function FullReportCard({ data }) {
   if (!data) return null;
-  const { student, marks, summary } = data;
+  const { student } = data;
+  const marks = Array.isArray(data.marks) ? data.marks : [];
+  const summary = data.summary || { totalObtained: 0, totalMaximum: 0, percentage: 0, result: 'N/A' };
   const pct = summary.percentage;
   const barColor = pct >= 75 ? 'var(--success)' : pct >= 50 ? 'var(--accent)' : 'var(--danger)';
 
@@ -32,21 +40,27 @@ function FullReportCard({ data }) {
               <tr><th>Subject Code</th><th>Subject</th><th>Internal</th><th>External</th><th>Total</th><th>Grade</th><th>Progress</th></tr>
             </thead>
             <tbody>
-              {marks.map((m) => (
-                <tr key={m.subjectId}>
-                  <td><span className="mono" style={{ fontSize: '0.82rem', color: 'var(--primary)' }}>{m.subjectCode}</span></td>
-                  <td style={{ fontWeight: 500 }}>{m.subjectName}</td>
-                  <td>{m.internalMarks}</td>
-                  <td>{m.externalMarks}</td>
-                  <td style={{ fontWeight: 600 }}>{m.total}</td>
-                  <td><span className={`badge ${GRADE_CLASS[m.grade] || ''}`}>{m.grade}</span></td>
+              {marks.length ? marks.map((m, index) => (
+                <tr key={m.subjectId ?? index}>
+                  <td><span className="mono" style={{ fontSize: '0.82rem', color: 'var(--primary)' }}>{m.subjectCode || shortId(m.subjectId)}</span></td>
+                  <td style={{ fontWeight: 500 }}>{m.subjectName || 'Unknown Subject'}</td>
+                  <td>{display(m.internalMarks, 0)}</td>
+                  <td>{display(m.externalMarks, 0)}</td>
+                  <td style={{ fontWeight: 600 }}>{display(m.total, 0)}</td>
+                  <td><span className={`badge ${GRADE_CLASS[m.grade] || ''}`}>{display(m.grade, 'N/A')}</span></td>
                   <td style={{ width: 120 }}>
                     <div className="marks-bar">
                       <div className="marks-bar-fill" style={{ width: `${Math.min(100, m.total)}%`, background: m.grade === 'F' ? 'var(--danger)' : 'var(--success)' }} />
                     </div>
                   </td>
                 </tr>
-              ))}
+              )) : (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)' }}>
+                    No mark details available for this semester.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

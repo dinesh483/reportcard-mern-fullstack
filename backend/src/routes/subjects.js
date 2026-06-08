@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const Subject = require('../models/Subject');
 const FacultySubject = require('../models/FacultySubject');
+const MarkEntry = require('../models/MarkEntry');
 const User = require('../models/User');
 const { authenticate, requireRole } = require('../middleware/auth');
 
@@ -47,6 +48,10 @@ router.put('/:id', requireRole('admin'), async (req, res) => {
 router.delete('/:id', requireRole('admin'), async (req, res) => {
   const subject = await Subject.findByIdAndDelete(req.params.id);
   if (!subject) return res.status(404).json({ message: 'Subject not found' });
+  await Promise.all([
+    FacultySubject.deleteMany({ subjectId: subject._id }),
+    MarkEntry.deleteMany({ subjectId: subject._id }),
+  ]);
   res.status(204).send();
 });
 

@@ -124,6 +124,68 @@ describe('Mark Entry — CRUD', () => {
       .set('Authorization', `Bearer ${adminToken}`);
     expect(delRes.status).toBe(204);
   });
+
+  test('listing marks deletes orphaned mark entries left behind by old data', async () => {
+    const { adminToken, student, subject1 } = await buildFixtures();
+    const orphanStudentId = student._id;
+    const orphanSubjectId = subject1._id;
+
+    await MarkEntry.create({
+      studentId: orphanStudentId,
+      subjectId: orphanSubjectId,
+      internalMarks: 20,
+      externalMarks: 30,
+      total: 50,
+      grade: 'B',
+      version: 1,
+    });
+
+    await Student.deleteOne({ _id: orphanStudentId });
+
+    const res = await request(app)
+      .get('/marks')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+    expect(await MarkEntry.countDocuments()).toBe(0);
+  });
+});
+
+describe('Referential cleanup', () => {
+  test('deleting a student also deletes their mark entries', async () => {
+    const { adminToken, student, subject1 } = await buildFixtures();
+
+    const createRes = await request(app)
+      .post('/marks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ studentId: student._id, subjectId: subject1._id, internalMarks: 30, externalMarks: 40 });
+    expect(createRes.status).toBe(201);
+
+    const deleteRes = await request(app)
+      .delete(`/students/${student._id}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(deleteRes.status).toBe(204);
+    expect(await MarkEntry.countDocuments()).toBe(0);
+  });
+
+  test('deleting a subject also deletes mark entries for that subject', async () => {
+    const { adminToken, student, subject1 } = await buildFixtures();
+
+    const createRes = await request(app)
+      .post('/marks')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ studentId: student._id, subjectId: subject1._id, internalMarks: 30, externalMarks: 40 });
+    expect(createRes.status).toBe(201);
+
+    const deleteRes = await request(app)
+      .delete(`/subjects/${subject1._id}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(deleteRes.status).toBe(204);
+    expect(await MarkEntry.countDocuments()).toBe(0);
+  });
 });
 
 describe('TRIPWIRE — Unauthorized Faculty Edit', () => {

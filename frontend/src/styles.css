@@ -453,6 +453,12 @@ select.form-control {
   cursor: pointer;
 }
 
+.marks-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
 /* Table */
 .table-container {
   overflow-x: auto;
@@ -1061,5 +1067,27 @@ tbody tr:last-child td {
 
   .stat-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .modal-overlay {
+    align-items: flex-start;
+    padding: 12px;
+  }
+
+  .modal {
+    max-height: calc(100vh - 24px);
+  }
+
+  .modal-footer {
+    flex-wrap: wrap;
+  }
+
+  .modal-footer .btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .marks-form-grid {
+    grid-template-columns: 1fr;
   }
 }

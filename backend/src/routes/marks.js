@@ -6,6 +6,7 @@ const FacultySubject = require('../models/FacultySubject');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { calculateMarks } = require('../services/gradeCalculator');
 const { logAction } = require('../services/audit');
+const { deleteOrphanedMarkEntries } = require('../services/markEntryCleanup');
 const { record, startTimer } = require('../services/metrics');
 
 router.use(authenticate);
@@ -148,6 +149,8 @@ router.get('/', async (req, res) => {
     if (req.query.studentId) filter.studentId = req.query.studentId;
     if (req.query.subjectId) filter.subjectId = req.query.subjectId;
   }
+
+  await deleteOrphanedMarkEntries(filter);
 
   const entries = await MarkEntry.find(filter)
     .populate('studentId', 'name rollNo semester departmentId')
