@@ -90,7 +90,7 @@ export default function Marks() {
   };
 
   const openEdit = (m) => {
-    const f = {
+    const f = hasDraft ? draft : {
       studentId: m.studentId?._id || m.studentId,
       subjectId: m.subjectId?._id || m.subjectId,
       internalMarks: m.internalMarks,
@@ -103,13 +103,12 @@ export default function Marks() {
 
   const closeModal = () => {
     setModal({ open: false, editing: null });
-    clearDraft();
   };
 
   const handleFormChange = (field, value) => {
     const next = { ...form, [field]: value };
     setForm(next);
-    if (!modal.editing) setDraft(next);
+    setDraft(next);
   };
 
   const save = async (e) => {
@@ -119,11 +118,13 @@ export default function Marks() {
       if (modal.editing) {
         await updateMark(modal.editing._id, { internalMarks: Number(form.internalMarks), externalMarks: Number(form.externalMarks), version: form.version });
         toast.success('Marks updated');
+        clearDraft();
         closeModal();
         load();
       } else {
         await createMark({ studentId: form.studentId, subjectId: form.subjectId, internalMarks: Number(form.internalMarks), externalMarks: Number(form.externalMarks) });
         toast.success('Marks saved');
+        clearDraft();
         closeModal();
         load();
       }
@@ -143,6 +144,7 @@ export default function Marks() {
 
   const handleAcceptLatest = () => {
     toast('Accepted latest version');
+    clearDraft();
     setConflict(null);
     setConflictCtx(null);
     load();
@@ -157,6 +159,7 @@ export default function Marks() {
         version: conflict.currentVersion
       });
       toast.success('Overwritten with your values');
+      clearDraft();
       setConflict(null);
       setConflictCtx(null);
       load();
@@ -267,9 +270,9 @@ export default function Marks() {
             )}
             {modal.editing && (
               <div className="alert alert-info" style={{ marginBottom: 16 }}>
-                <div><strong>Student:</strong> {modal.editing.studentId?.name} | ID: <span className="mono">{modal.editing.studentId?._id}</span> | Roll No: <span className="mono">{modal.editing.studentId?.rollNo}</span> | Dept: {modal.editing.studentId?.departmentId?.name} | Sem: {modal.editing.studentId?.semester}</div>
-                <div><strong>Subject:</strong> {modal.editing.subjectId?.name} | ID: <span className="mono">{modal.editing.subjectId?._id}</span> | Code: <span className="mono">{modal.editing.subjectId?.code}</span></div>
-                <div><strong>Mark ID:</strong> <span className="mono">{modal.editing._id}</span> | Version: {form.version}</div>
+                <div><strong>Student:</strong> {modal.editing.studentId?.name} | Roll No: <span className="mono">{modal.editing.studentId?.rollNo}</span></div>
+                <div><strong>Subject:</strong> {modal.editing.subjectId?.name} | Code: <span className="mono">{modal.editing.subjectId?.code}</span></div>
+                <div><strong>Version:</strong> {form.version}</div>
               </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

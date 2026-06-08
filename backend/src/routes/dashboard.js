@@ -59,17 +59,4 @@ router.get('/metrics', requireRole('admin'), (req, res) => {
   res.json(metricsService.getMetrics());
 });
 
-// POST /metrics/seed  — dev helper: seed some sample metrics (admin only)
-router.post('/metrics/seed', requireRole('admin'), (req, res) => {
-  // Add some synthetic samples for demo/testing
-  const ops = ['mark_create', 'mark_update', 'mark_delete', 'bulk_import'];
-  for (let i = 0; i < 20; i++) {
-    const op = ops[Math.floor(Math.random() * ops.length)];
-    // random latency between 5ms and 300ms
-    const ms = Math.floor(Math.random() * 295) + 5;
-    metricsService.record(op, ms);
-  }
-  return res.json({ seeded: true });
-});
-
 module.exports = router;
